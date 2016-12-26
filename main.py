@@ -3,10 +3,16 @@
 import urllib.request
 import pymongo
 import pprint
+import redis
+import json
+import jieba
+import jieba.posseg
+import jieba.analyse
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from elasticsearch import Elasticsearch
+
 es = Elasticsearch()
 client = MongoClient('localhost', 27017)
 db = client['test']
@@ -17,6 +23,19 @@ user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
 headers = {'User-Agent': user_agent}
 # response = urllib.request.urlopen("https://www.ptt.cc/bbs/movie/index.html").read()
 # url = "https://www.ptt.cc/bbs/movie/index4888.html"
+
+def transLate():
+    print('transLate')
+    ret = redis.StrictRedis(host='127.0.0.1', port=6379, db=0)
+    foo = ret.get('pttHome')
+    bar = json.loads(foo.decode('utf-8'))
+    words = ','.join(bar)
+    tagArray = []
+    for tag, score in jieba.analyse.textrank(words, withWeight=True):
+        print('%s %s' % (tag, score))
+        tagArray.append(tag)
+    ret.set('pttHome', ','.join(tagArray))
+    return
 
 def parseTopic(url):
     values = {}
@@ -61,6 +80,7 @@ def getPost(title):
     print(document)
     
 def updateDate_in_DB(obj, year):
+      # print(title+" "+year)
       document = ptt.find_one({'title': obj['title']})
       print(document['date'])
       size = len(document['date'].strip('"').split('/'))
@@ -75,7 +95,7 @@ def updateDate_in_DB(obj, year):
       }, upsert=False)
       document = ptt.find_one({'title': obj['title']})
       searchIndexing(obj['title'], obj['link'], date, obj['author'], document['_id'])
-
+    
 def resetDate_in_DB(obj):
     print(obj['title']+" "+obj['year'])
     document = ptt.find_one({'title': obj['title']})
@@ -92,8 +112,8 @@ def resetDate_in_DB(obj):
     
 def scrapPtt():
     pageLink = {}
-    i = 4934
-    end = 4944
+    i = 4943
+    end = 4952
     while i < end: 
         url = "https://www.ptt.cc/bbs/movie/index"+str(i)+".html"
         pageLink = parseTopic(url)
@@ -142,7 +162,9 @@ def searchIndexing(title, link, date, author, id):
     return
          
 # showPtt()
-scrapPtt()
-#updateDB()
+# scrapPtt()
+# updateDB()
 # getPost("Re:[心得] 美國殺人魔結局")
 # searchIndexing()
+transLate()
+

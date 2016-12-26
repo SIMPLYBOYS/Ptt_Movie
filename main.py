@@ -157,7 +157,7 @@ def searchIndexing(title, link, date, author, id):
         'date': date,
         'author': author
     }
-    res = es.index(index="ptt-test", doc_type='ptt', id=id, body=doc)
+    res = es.index(index="test", doc_type='ptt', id=id, body=doc)
     print(title+' indexing !')
     return
          

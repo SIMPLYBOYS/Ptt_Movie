@@ -8,11 +8,14 @@ import json
 import jieba
 import jieba.posseg
 import jieba.analyse
+import schedule
+import time
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from elasticsearch import Elasticsearch
-
+scrap_from = 4956 #scraping from page number
+scrap_size = 8 #scraping 4 pages per work
 es = Elasticsearch()
 client = MongoClient('localhost', 27017)
 db = client['test']
@@ -21,8 +24,6 @@ ptt = db['ptt']
 # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36'}
 user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
 headers = {'User-Agent': user_agent}
-# response = urllib.request.urlopen("https://www.ptt.cc/bbs/movie/index.html").read()
-# url = "https://www.ptt.cc/bbs/movie/index4888.html"
 
 def transLate():
     print('transLate')
@@ -43,33 +44,30 @@ def parseTopic(url):
     data = data.encode('ascii')
     req = urllib.request.Request(url, data, headers)
     
-    with urlopen(req) as response:
-       the_page = response.read()
-
-    arrayDB = []
-    inner = []
-    bsObj =  BeautifulSoup(the_page,"html.parser")
-    container = bsObj.select('.r-ent')
-    
-    for each_item in container:
-         if (each_item.select('div.title')[0].text.find("本文已被刪除") != -1):
-            continue
-         print ("日期："+each_item.select('div.date')[0].text, "作者each_item.select('div.title')[0].text.splitlines()[1]："+each_item.select('div.author')[0].text)
-         print (each_item.select('div.title')[0].text)
-         print ("https://www.ptt.cc"+each_item.find('a', href=True)['href'])
-         print ("---------------------------------")
-         post = {}
-         post['autor'] = each_item.select('div.author')[0].text
-         post['date'] = each_item.select('div.date')[0].text.replace(" ","")
-         post['link'] = "https://www.ptt.cc"+each_item.find('a', href=True)['href']
-         post['title'] = each_item.select('div.title')[0].text.splitlines()[1]
-         arrayDB.append(post)
-         inner.append({'title': post['title'], 'link': post['link'], 'author': post['autor'], 'date': post['date']})
-
-    result = ptt.insert_many(arrayDB)
-    print('insert result: ' + str(result))
-    return inner
-         
+    try:
+        with urlopen(req) as response:
+           the_page = response.read()
+           bsObj =  BeautifulSoup(the_page,"html.parser")
+           container = bsObj.select('.r-ent')
+           for each_item in container:
+                if (each_item.select('div.title')[0].text.find("本文已被刪除") != -1):
+                   continue
+                print ("日期："+each_item.select('div.date')[0].text, "作者each_item.select('div.title')[0].text.splitlines()[1]："+each_item.select('div.author')[0].text)
+                print (each_item.select('div.title')[0].text)
+                print ("https://www.ptt.cc"+each_item.find('a', href=True)['href'])
+                print ("---------------------------------")
+                post = {}
+                post['autor'] = each_item.select('div.author')[0].text
+                post['date'] = each_item.select('div.date')[0].text.replace(" ","")
+                post['link'] = "https://www.ptt.cc"+each_item.find('a', href=True)['href']
+                post['title'] = each_item.select('div.title')[0].text.splitlines()[1]
+                ptt.replace_one({'title': post['title']}, post, True)
+                updatePostDate({'title': post['title'], 'link': post['link'], 'author': post['autor'], 'date': post['date']})
+           return 0
+    except urllib.error.HTTPError as err:
+        print(err.code)
+        return -1
+      
 def showPtt():
     for post in ptt.find():
          pprint.pprint(post)
@@ -112,14 +110,22 @@ def resetDate_in_DB(obj):
     
 def scrapPtt():
     pageLink = {}
-    i = 4943
-    end = 4952
+    global scrap_from
+    print("scraping from --->"+ str(scrap_from))
+    i = scrap_from
+    stopping_at = scrap_from
+    end = scrap_from + scrap_size
     while i < end: 
         url = "https://www.ptt.cc/bbs/movie/index"+str(i)+".html"
-        pageLink = parseTopic(url)
-        for index, page in enumerate(pageLink):
-            updatePostDate(page)
+        status = parseTopic(url)
         i = i+1
+        if (status == 0):
+            stopping_at = i
+    print("scraping status ---> "+str(status)+"\n stoping @: "+ str(stopping_at))  
+    if (status == 0):
+        scrap_from += scrap_size
+    else:
+        scrap_from = stopping_at
 
 def updateDB():
     cursor = ptt.find({})
@@ -157,14 +163,34 @@ def searchIndexing(title, link, date, author, id):
         'date': date,
         'author': author
     }
-    res = es.index(index="test", doc_type='ptt', id=id, body=doc)
+    res = es.index(index="ptt-test", doc_type='ptt', id=id, body=doc)
     print(title+' indexing !')
     return
-         
+
+def scrapjob():
+    scrapPtt()
+
+def transLatejob():
+    transLate()
+    
+def job():
+    global scrap_from 
+    print("I'm working..."+str(scrap_from))
+    scrap_from +=1
+
+schedule.every().day.at("3:50").do(scrapjob)
+# node.js task perform between the time gap
+schedule.every().day.at("4:10").do(transLatejob)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
+
 # showPtt()
 # scrapPtt()
 # updateDB()
 # getPost("Re:[心得] 美國殺人魔結局")
 # searchIndexing()
-transLate()
+#transLate()
 
+    

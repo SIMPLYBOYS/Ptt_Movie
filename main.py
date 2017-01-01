@@ -10,12 +10,13 @@ import jieba.posseg
 import jieba.analyse
 import schedule
 import time
+import dateutil.parser as parser
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from elasticsearch import Elasticsearch
-scrap_from = 4956 #scraping from page number
-scrap_size = 8 #scraping 4 pages per work
+scrap_from = 4970 #scraping from page number
+scrap_size = 4 #scraping 4 pages per work
 es = Elasticsearch()
 client = MongoClient('localhost', 27017)
 db = client['test']
@@ -52,7 +53,7 @@ def parseTopic(url):
            for each_item in container:
                 if (each_item.select('div.title')[0].text.find("本文已被刪除") != -1):
                    continue
-                print ("日期："+each_item.select('div.date')[0].text, "作者each_item.select('div.title')[0].text.splitlines()[1]："+each_item.select('div.author')[0].text)
+                print ("日期："+each_item.select('div.date')[0].text, "作者："+each_item.select('div.author')[0].text)
                 print (each_item.select('div.title')[0].text)
                 print ("https://www.ptt.cc"+each_item.find('a', href=True)['href'])
                 print ("---------------------------------")
@@ -84,14 +85,15 @@ def updateDate_in_DB(obj, year):
       size = len(document['date'].strip('"').split('/'))
       date = document['date'].strip('"').split('/')[size-2:]
       date = year+"/"+'/'.join(date)
-      ptt.update_many({
-          'title': obj['title']
-      },{ 
+      date = (parser.parse(date))
+      ptt.update_one({
+          '_id': document['_id']
+      }, { 
           '$set':{
               'date': date
            } 
       }, upsert=False)
-      document = ptt.find_one({'title': obj['title']})
+      print("date ===> "+date.isoformat())
       searchIndexing(obj['title'], obj['link'], date, obj['author'], document['_id'])
     
 def resetDate_in_DB(obj):
@@ -106,7 +108,7 @@ def resetDate_in_DB(obj):
         '$set':{
             'date': date
         }
-    }, upsert=False)
+    }, upsert=True)
     
 def scrapPtt():
     pageLink = {}
@@ -126,12 +128,6 @@ def scrapPtt():
         scrap_from += scrap_size
     else:
         scrap_from = stopping_at
-
-def updateDB():
-    cursor = ptt.find({})
-    for document in cursor:
-        updatePostDate(document)
-        print('update '+document['title']+' finished!')
                         
 def updatePostDate(obj):
     values = {}
@@ -144,17 +140,23 @@ def updatePostDate(obj):
             bsObj = BeautifulSoup(the_page,"html.parser")
             container = bsObj.select('.article-meta-value')
             for innerindex, item in enumerate(container):
+                #print(item.text);
                 if (innerindex == 3):
                     if (item.text.find('(') == -1 or item.text.find(')') == -1):
-                         # print(item.text[len(item.text)-4:])
-                         updateDate_in_DB(obj, item.text[len(item.text)-4:])
+                        print(('※' not in item.text))
+                        if (len(item.text) >= 24 and ('※' not in item.text)):
+                            updateDate_in_DB(obj, item.text[len(item.text)-4:])
+                        elif ('※' in item.text):
+                            print(item.text.split('※'))
+                            year = item.text.split('※')[0]
+                            updateDate_in_DB(obj, year[len(year)-4:])
                     else:
                          item['text'] = item.text.strip("()").split('(')[1]
-                         # print(item['text'][len(item['text'])-4:])
+                         print(item['text'][len(item['text'])-4:])
                          updateDate_in_DB(obj, item['text'][len(item['text'])-4:])  
     except urllib.error.HTTPError as err:
         print(err.code)
-        return        
+        return    
     
 def searchIndexing(title, link, date, author, id):
     doc = {
@@ -184,11 +186,11 @@ schedule.every().day.at("4:10").do(transLatejob)
 
 while True:
     schedule.run_pending()
-    time.sleep(1)
+#    time.sleep(1)
 
 # showPtt()
-# scrapPtt()
-# updateDB()
+#scrapPtt()
+#updateDB()
 # getPost("Re:[心得] 美國殺人魔結局")
 # searchIndexing()
 #transLate()

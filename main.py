@@ -85,15 +85,15 @@ def updateDate_in_DB(obj, year):
       size = len(document['date'].strip('"').split('/'))
       date = document['date'].strip('"').split('/')[size-2:]
       date = year+"/"+'/'.join(date)
-      date = (parser.parse(date))
+      print((parser.parse(date)))
       ptt.update_one({
           '_id': document['_id']
       }, { 
           '$set':{
-              'date': date
+              'date': (parser.parse(date)) #for mongoDB ISODate
            } 
       }, upsert=False)
-      print("date ===> "+date.isoformat())
+      #print("date ===> "+date.isoformat())
       searchIndexing(obj['title'], obj['link'], date, obj['author'], document['_id'])
     
 def resetDate_in_DB(obj):
@@ -140,7 +140,7 @@ def updatePostDate(obj):
             bsObj = BeautifulSoup(the_page,"html.parser")
             container = bsObj.select('.article-meta-value')
             for innerindex, item in enumerate(container):
-                #print(item.text);
+                print(item.text);
                 if (innerindex == 3):
                     if (item.text.find('(') == -1 or item.text.find(')') == -1):
                         print(('※' not in item.text))

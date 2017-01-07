@@ -52,7 +52,8 @@ def parseTopic(url):
            bsObj =  BeautifulSoup(the_page,"html.parser")
            container = bsObj.select('.r-ent')
            for each_item in container:
-                if (each_item.select('div.title')[0].text.find("本文已被刪除") != -1):
+                if (each_item.select('div.title')[0].text.find("本文已被刪除") != -1 or \
+                    each_item.select('div.title')[0].text.find("(e)") != -1):
                    continue
                 print ("日期："+each_item.select('div.date')[0].text, "作者："+each_item.select('div.author')[0].text)
                 print (each_item.select('div.title')[0].text)
@@ -91,7 +92,7 @@ def updateDate_in_DB(obj, year):
           '_id': document['_id']
       }, { 
           '$set':{
-              'date': (parser.parse(date)) #for mongoDB ISODate
+              'date': parser.parse(date) #for mongoDB ISODate
            } 
       }, upsert=False)
       #print("date ===> "+date.isoformat())

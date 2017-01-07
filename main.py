@@ -8,6 +8,7 @@ import json
 import jieba
 import jieba.posseg
 import jieba.analyse
+import os
 import schedule
 import time
 import dateutil.parser as parser
@@ -15,7 +16,7 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from elasticsearch import Elasticsearch
-scrap_from = 4970 #scraping from page number
+# scrap_from = 4970 #scraping from page number
 scrap_size = 4 #scraping 4 pages per work
 es = Elasticsearch()
 client = MongoClient('localhost', 27017)
@@ -112,11 +113,17 @@ def resetDate_in_DB(obj):
     
 def scrapPtt():
     pageLink = {}
-    global scrap_from
+    
+    if os.path.isfile('scrap_from.txt'):
+        scrap_from = read_scrap_from()
+    else:
+        scrap_from = 4995
+        
     print("scraping from --->"+ str(scrap_from))
-    i = scrap_from
-    stopping_at = scrap_from
-    end = scrap_from + scrap_size
+    i = int(scrap_from)
+    stopping_at = int(scrap_from)
+    end = int(scrap_from) + scrap_size
+    
     while i < end: 
         url = "https://www.ptt.cc/bbs/movie/index"+str(i)+".html"
         status = parseTopic(url)
@@ -124,11 +131,27 @@ def scrapPtt():
         if (status == 0):
             stopping_at = i
     print("scraping status ---> "+str(status)+"\n stoping @: "+ str(stopping_at))  
+    
     if (status == 0):
-        scrap_from += scrap_size
+        foo = int(scrap_from)
+        foo += scrap_size
+        scrap_from = foo
     else:
         scrap_from = stopping_at
-                        
+    
+    write_scrap_from(scrap_from)
+    
+def write_scrap_from(scrap_from):
+    fd = open('scrap_from.txt', 'w')
+    fd.write(str(scrap_from))   
+    return
+
+def read_scrap_from():
+    fd = open('scrap_from.txt', 'r')
+    scrap_from = fd.read()
+    fd.close()
+    return scrap_from
+                      
 def updatePostDate(obj):
     values = {}
     data = urllib.parse.urlencode(values)
@@ -183,6 +206,7 @@ def job():
 schedule.every().day.at("3:50").do(scrapjob)
 # node.js task perform between the time gap
 schedule.every().day.at("4:10").do(transLatejob)
+print(__name__)
 
 def main():
     while True:

@@ -187,7 +187,6 @@ schedule.every().day.at("4:10").do(transLatejob)
 def main():
     while True:
         schedule.run_pending()
-        print("looping ----")
         #time.sleep(1)
     
 if __name__ == '__main__':

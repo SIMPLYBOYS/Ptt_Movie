@@ -184,9 +184,14 @@ schedule.every().day.at("3:50").do(scrapjob)
 # node.js task perform between the time gap
 schedule.every().day.at("4:10").do(transLatejob)
 
-while True:
-    schedule.run_pending()
-#    time.sleep(1)
+def main():
+    while True:
+        schedule.run_pending()
+        print("looping ----")
+        #time.sleep(1)
+    
+if __name__ == '__main__':
+    main()
 
 # showPtt()
 #scrapPtt()

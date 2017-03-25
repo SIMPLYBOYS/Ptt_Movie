@@ -118,7 +118,7 @@ def scrapPtt():
     if os.path.isfile('scrap_from.txt'):
         scrap_from = read_scrap_from()
     else:
-        scrap_from = 4995
+        scrap_from = 4995 # depend on content of database 
         
     print("scraping from --->"+ str(scrap_from))
     i = int(scrap_from)
@@ -137,10 +137,11 @@ def scrapPtt():
         foo = int(scrap_from)
         foo += scrap_size
         scrap_from = foo
+        write_scrap_from(scrap_from)
+        scrapPtt()
     else:
         scrap_from = stopping_at
-    
-    write_scrap_from(scrap_from)
+        write_scrap_from(scrap_from)
     
 def write_scrap_from(scrap_from):
     fd = open('scrap_from.txt', 'w')

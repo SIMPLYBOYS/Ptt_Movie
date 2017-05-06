@@ -53,6 +53,7 @@ def parseTopic(url):
            container = bsObj.select('.r-ent')
            for each_item in container:
                 if (each_item.select('div.title')[0].text.find("本文已被刪除") != -1 or \
+                    each_item.select('div.title')[0].text.find("蓄意暴雷") != -1 or \
                     each_item.select('div.title')[0].text.find("(e)") != -1):
                    continue
                 print ("日期："+each_item.select('div.date')[0].text, "作者："+each_item.select('div.author')[0].text)

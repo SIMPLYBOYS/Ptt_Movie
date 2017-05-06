@@ -23,6 +23,7 @@ client = MongoClient('localhost', 27017)
 db = client['test']
 taiwan = db['taiwan']
 ptt = db['ptt']
+scrap_file = '/mnt/ebs-store/scrap_from.txt'
 # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36'}
 user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
 headers = {'User-Agent': user_agent}
@@ -116,7 +117,7 @@ def resetDate_in_DB(obj):
 def scrapPtt():
     pageLink = {}
     
-    if os.path.isfile('scrap_from.txt'):
+    if os.path.isfile(scrap_file):
         scrap_from = read_scrap_from()
     else:
         scrap_from = 4995 # depend on content of database 
@@ -145,12 +146,12 @@ def scrapPtt():
         write_scrap_from(scrap_from)
     
 def write_scrap_from(scrap_from):
-    fd = open('scrap_from.txt', 'w')
+    fd = open(scrap_file, 'w')
     fd.write(str(scrap_from))   
     return
 
 def read_scrap_from():
-    fd = open('scrap_from.txt', 'r')
+    fd = open(scrap_file, 'r')
     scrap_from = fd.read()
     fd.close()
     return scrap_from

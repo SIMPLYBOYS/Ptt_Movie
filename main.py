@@ -53,7 +53,8 @@ def parseTopic(url):
            bsObj =  BeautifulSoup(the_page,"html.parser")
            container = bsObj.select('.r-ent')
            for each_item in container:
-                if (each_item.select('div.title')[0].text.find("本文已被刪除") != -1 or \
+                if (each_item.select('div.title')[0].text.find("已被") != -1 or \
+                    each_item.select('div.title')[0].text.find("本文已被刪除") != -1 or \
                     each_item.select('div.title')[0].text.find("蓄意暴雷") != -1 or \
                     each_item.select('div.title')[0].text.find("(e)") != -1):
                    continue
